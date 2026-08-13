@@ -26,7 +26,7 @@
         <div class="field"><label for="loginEmail">선생님 로그인 이메일</label><input id="loginEmail" type="email" placeholder="teacher@example.com"></div>
         <div class="field"><label for="loginPassword">비밀번호</label><input id="loginPassword" type="password" placeholder="비밀번호"></div>
       </div>
-      <div class="button-row"><button id="loginButton" class="btn" type="button">🔐 로그인</button><button id="logoutButton" class="btn secondary hidden" type="button">로그아웃</button><span id="loginUserText" class="mini"></span></div>
+      <div class="button-row"><button id="loginButton" class="btn" type="button" onclick="loginFirebase()">🔐 로그인</button><button id="logoutButton" class="btn secondary hidden" type="button" onclick="logoutFirebase()">로그아웃</button><span id="loginUserText" class="mini"></span></div>
     </div>
     <div id="dbStatusText" class="db-status-text">Firebase 설정을 연결하면 학생과 월별 평가를 저장할 수 있습니다.</div>
     <details>
@@ -34,7 +34,7 @@
       <div class="api-box">
         <label for="firebaseConfigInput">Firebase Web App 설정(JSON)</label>
         <textarea id="firebaseConfigInput" style="min-height:120px" placeholder='{"apiKey":"...","authDomain":"...","projectId":"...", ...}'></textarea>
-        <div class="button-row" style="margin-top:10px"><button id="firebaseConnectButton" class="btn" type="button">Firebase 설정 저장 · 연결</button><button id="firebaseResetButton" class="btn secondary" type="button">설정 초기화</button></div>
+        <div class="button-row" style="margin-top:10px"><button id="firebaseConnectButton" class="btn" type="button" onclick="connectFirebase(true)">Firebase 설정 저장 · 연결</button><button id="firebaseResetButton" class="btn secondary" type="button" onclick="resetFirebaseConfig()">설정 초기화</button></div>
         <div class="mini">Firebase 콘솔 → 프로젝트 설정 → 내 앱(Web)에서 보이는 firebaseConfig 객체의 값만 JSON 형태로 붙여넣으세요. Firebase 웹 설정값은 앱 식별용이며, 실제 데이터 보호는 Authentication과 Firestore Security Rules로 합니다.</div>
       </div>
     </details>
@@ -45,9 +45,9 @@
   <section>
     <h2>👤 1. 학생 기본 정보</h2>
     <div class="student-toolbar">
-      <div class="field" style="margin:0"><label for="studentPicker">등록 학생 선택</label><select id="studentPicker"><option value="">새 학생 입력</option></select></div>
-      <button id="newStudentButton" class="btn secondary" type="button">＋ 새 학생</button>
-      <button id="reloadStudentsButton" class="btn secondary" type="button">↻ 목록 새로고침</button>
+      <div class="field" style="margin:0"><label for="studentPicker">등록 학생 선택</label><select id="studentPicker" onchange="selectStudent(this.value)"><option value="">새 학생 입력</option></select></div>
+      <button id="newStudentButton" class="btn secondary" type="button" onclick="clearStudentForm()">＋ 새 학생</button>
+      <button id="reloadStudentsButton" class="btn secondary" type="button" onclick="if(requireDb()) loadStudents()">↻ 목록 새로고침</button>
     </div>
 
     <div class="grid-2">
@@ -61,14 +61,14 @@
       </div>
       <div>
         <div class="field"><label for="currentBook">현재 교재</label><input id="currentBook" type="text" value="English Stars Level 2"></div>
-        <div class="field"><label>과정 선택</label><div class="radio-row"><label class="pill"><input type="radio" name="schoolType" value="초등부" checked> 초등부</label><label class="pill"><input type="radio" name="schoolType" value="중등부"> 중등부</label></div></div>
+        <div class="field"><label>과정 선택</label><div class="radio-row"><label class="pill"><input type="radio" name="schoolType" value="초등부" checked onchange="renderGrades()"> 초등부</label><label class="pill"><input type="radio" name="schoolType" value="중등부" onchange="renderGrades()"> 중등부</label></div></div>
         <div class="field"><label for="studentLevel">학년 선택</label><select id="studentLevel"></select></div>
       </div>
     </div>
 
     <div class="history-row">
       <div class="field" style="margin:0"><label for="evaluationHistory">이 학생의 이전 평가</label><select id="evaluationHistory"><option value="">저장된 평가가 없습니다</option></select></div>
-      <button id="loadEvaluationButton" class="btn secondary" type="button">📂 선택 평가 불러오기</button>
+      <button id="loadEvaluationButton" class="btn secondary" type="button" onclick="loadSelectedEvaluation()">📂 선택 평가 불러오기</button>
     </div>
   </section>
 
@@ -92,11 +92,11 @@
 
   <section>
     <h2>✍️ 4. AI 종합 의견 생성</h2>
-    <div class="success">🤖 Gemini AI가 학업 점수와 출석·과제, 담임선생님이 입력한 키워드를 함께 반영해 5문장 종합 의견을 생성합니다.</div>
+    <div class="success">🤖 DB 1차 연결 중입니다. 종합 의견은 직접 입력할 수 있으며 Gemini AI 자동 생성은 다음 단계에서 다시 연결합니다.</div>
     <div class="field"><label for="customPos">👍 이번 달 학생의 칭찬/강점 키워드</label><input id="customPos" type="text" value="학습 태도가 안정적이고 과제 수행이 좋음"></div>
     <div class="field"><label for="customNeg">🌱 이번 달 학생의 보완/노력 키워드</label><input id="customNeg" type="text" value="독해에서 세부 내용 확인을 조금 더 꼼꼼히 할 필요가 있음"></div>
     <details><summary>Gemini API Key 설정</summary><div class="api-box"><label for="apiKey">Gemini API Key</label><input id="apiKey" type="password" placeholder="API Key를 입력하세요" autocomplete="off"><div class="mini">입력한 키는 이 브라우저의 localStorage에만 저장합니다. HTML 소스에는 직접 넣지 않습니다.</div></div></details>
-    <div style="margin-top:18px"><button class="btn" id="aiButton" type="button">🤖 AI에게 5문장 추천받기</button></div>
+    <div style="margin-top:18px"><button class="btn" id="aiButton" type="button" onclick="document.getElementById('aiStatus').textContent='AI 코멘트는 Firebase 연결 다음 단계에서 다시 연결합니다. 현재는 아래 종합 의견을 직접 입력해 주세요.'">🤖 AI에게 5문장 추천받기</button></div>
     <div id="aiStatus" class="ai-status"></div>
     <div class="field" style="margin-top:18px"><label for="teacherFeedback">📋 최종 종합 의견 (직접 편집 가능)</label><textarea id="teacherFeedback">위의 버튼을 누르면 점수와 키워드를 분석한 AI 코멘트가 자동으로 생성됩니다.</textarea></div>
   </section>
@@ -105,8 +105,8 @@
 
   <section>
     <div class="grid-2">
-      <button class="btn gold full" id="saveEvaluationButton" type="button">💾 학생정보 + 이번달 평가 저장</button>
-      <button class="btn full" id="reportButton" type="button">✨ 월말평가 결과지 생성하기</button>
+      <button class="btn gold full" id="saveEvaluationButton" type="button" onclick="saveEvaluation()">💾 학생정보 + 이번달 평가 저장</button>
+      <button class="btn full" id="reportButton" type="button" onclick="generateReport()">✨ 월말평가 결과지 생성하기</button>
     </div>
     <div id="saveStatus" class="db-status-text"></div>
     <div id="reportError" class="error hidden" style="margin-top:14px">평가 영역이 선택되지 않았습니다.</div>
@@ -115,7 +115,7 @@
   <section id="result-section" class="hidden">
     <div class="divider"></div>
     <h2>📋 5. 생성된 결과지 확인 및 이미지 저장</h2>
-    <div class="download-wrap"><button class="btn full" id="downloadButton" type="button">📸 카톡 전송용 결과지 이미지(PNG) 다운로드하기</button></div>
+    <div class="download-wrap"><button class="btn full" id="downloadButton" type="button" onclick="alert('PNG 저장은 다음 업데이트에서 다시 연결합니다.')">📸 카톡 전송용 결과지 이미지(PNG) 다운로드하기</button></div>
     <div id="capture-area">
       <div class="report-brand"><div class="brand-left"><div class="brand-mark">YMS</div><div><div class="brand-ko">와이엠에스 영어과</div><div class="brand-en">YMS ENGLISH</div></div></div><div class="brand-right"><div class="slogan">Your Mastery Solution</div><div class="quote">True learning builds the bridge from effort to excellence.</div></div></div>
       <div class="report-title">YMS Monthly Evaluation Report</div><div id="reportMonth" class="report-subtitle">2026년 8월 정기 평가</div>
@@ -132,6 +132,7 @@
 
 <script src="app-base.js"></script>
 <script src="db.js"></script>
+<script src="report.js"></script>
 <script src="app-ui.js"></script>
 </body>
 </html>
