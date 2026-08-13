@@ -1,1 +1,3 @@
-// YMS Evaluation report module
+function generateReport(){
+  el('result-section').classList.remove('hidden');
+}
