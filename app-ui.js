@@ -5,7 +5,7 @@ el('evaluationYear').value=new Date().getFullYear();
 el('evaluationMonth').value=`${new Date().getMonth()+1}월`;
 
 const YMS_FIREBASE_CONFIG={
-  apiKey:'AIzaSyBuXxBX-BffkDQBYL0bDIaQLMkBUC0B3f8',
+  apiKey:'AIzaSyBuXxBX-BffkDQBYL0bDIaQlMkBUC0B3f8',
   authDomain:'yms-ele-evaluation.firebaseapp.com',
   projectId:'yms-ele-evaluation',
   storageBucket:'yms-ele-evaluation.firebasestorage.app',
