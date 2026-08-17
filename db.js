@@ -1,6 +1,8 @@
 async function initFirebaseFromSaved(){
-  const saved=localStorage.getItem('yms_evaluation_firebase_config');if(!saved)return;
-  el('firebaseConfigInput').value=saved;await connectFirebase(false);
+  const saved=JSON.stringify(YMS_FIREBASE_CONFIG);
+  localStorage.setItem('yms_evaluation_firebase_config',saved);
+  el('firebaseConfigInput').value=JSON.stringify(YMS_FIREBASE_CONFIG,null,2);
+  await connectFirebase(false);
 }
 async function connectFirebase(showMessage=true){
   try{
