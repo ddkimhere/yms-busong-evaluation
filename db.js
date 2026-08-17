@@ -10,16 +10,42 @@ async function connectFirebase(showMessage=true){
     const config=JSON.parse(raw);if(!config.apiKey||!config.projectId)throw new Error('apiKey와 projectId가 포함된 firebaseConfig가 필요합니다.');
     if(firebase.apps.length){await Promise.all(firebase.apps.map(app=>app.delete().catch(()=>{})))}
     firebase.initializeApp(config);state.auth=firebase.auth();state.db=firebase.firestore();state.firebaseReady=true;
-    localStorage.setItem('yms_evaluation_firebase_config',JSON.stringify(config));el('firebaseConfigInput').value=JSON.stringify(config,null,2);el('authArea').classList.remove('hidden');
-    state.auth.onAuthStateChanged(async user=>{state.user=user||null;updateAuthUI();if(user){await Promise.all([loadTeachers(),loadStudents()]);setDbStatus(`Firebase 연결됨 · ${user.email}`,'on')}else{setDbStatus('Firebase 연결됨 · 선생님 로그인이 필요합니다.','warn')}});
-    if(showMessage)setDbStatus('Firebase 연결됨 · 로그인 상태 확인 중...','warn');
-  }catch(err){state.firebaseReady=false;setDbStatus('Firebase 연결 실패: '+(err.message||err),'');alert('Firebase 연결 오류: '+(err.message||err));}
+    localStorage.setItem('yms_evaluation_firebase_config',JSON.stringify(config));el('firebaseConfigInput').value=JSON.stringify(config,null,2);
+    el('authArea').classList.add('hidden');
+    setDbStatus('Firebase 자동 연결 중...','warn');
+    state.auth.onAuthStateChanged(async user=>{
+      state.user=user||null;
+      updateAuthUI();
+      if(user){
+        await Promise.all([loadTeachers(),loadStudents()]);
+        setDbStatus('Firebase 연결됨 · 바로 사용할 수 있습니다.','on');
+      }
+    });
+    if(!state.auth.currentUser){await state.auth.signInAnonymously()}
+    if(showMessage)setDbStatus('Firebase 연결됨 · 바로 사용할 수 있습니다.','on');
+  }catch(err){
+    state.firebaseReady=false;
+    const msg=(err&&err.code==='auth/operation-not-allowed')?'Firebase Authentication에서 익명 로그인을 활성화해 주세요.':(err.message||String(err));
+    setDbStatus('Firebase 연결 실패: '+msg,'');
+    alert('Firebase 연결 오류: '+msg);
+  }
 }
 function resetFirebaseConfig(){localStorage.removeItem('yms_evaluation_firebase_config');el('firebaseConfigInput').value='';location.reload()}
-function updateAuthUI(){const logged=!!state.user;el('logoutButton').classList.toggle('hidden',!logged);el('loginButton').classList.toggle('hidden',logged);el('loginEmail').disabled=logged;el('loginPassword').disabled=logged;el('loginUserText').textContent=logged?`로그인: ${state.user.email}`:''}
-async function loginFirebase(){try{if(!state.auth)throw new Error('먼저 Firebase를 연결해 주세요.');await state.auth.signInWithEmailAndPassword(el('loginEmail').value.trim(),el('loginPassword').value);el('loginPassword').value=''}catch(err){alert('로그인 실패: '+(err.message||err))}}
-async function logoutFirebase(){if(state.auth)await state.auth.signOut()}
-function requireDb(){if(!state.firebaseReady||!state.db){alert('먼저 Firebase 연결 설정을 완료해 주세요.');return false}if(!state.user){alert('Firebase에 선생님 계정으로 로그인해 주세요.');return false}return true}
+function updateAuthUI(){
+  const logged=!!state.user;
+  el('logoutButton').classList.toggle('hidden',true);
+  el('loginButton').classList.toggle('hidden',true);
+  el('loginEmail').disabled=true;
+  el('loginPassword').disabled=true;
+  el('loginUserText').textContent=logged?'자동 연결됨':'';
+}
+async function loginFirebase(){return}
+async function logoutFirebase(){return}
+function requireDb(){
+  if(!state.firebaseReady||!state.db){alert('Firebase 데이터베이스가 아직 연결되지 않았습니다.');return false}
+  if(!state.user){alert('Firebase 자동 연결 중입니다. 잠시 후 다시 시도해 주세요.');return false}
+  return true
+}
 async function loadTeachers(){
   if(!state.user)return;
   try{const snap=await state.db.collection('teachers').get();state.teachers=snap.docs.map(d=>({id:d.id,...d.data()})).filter(x=>x.active!==false).sort((a,b)=>(a.name||'').localeCompare(b.name||'','ko'));el('teacherOptions').innerHTML=state.teachers.map(t=>`<option value="${escapeHtml(t.name||'')}"></option>`).join('')}catch(err){console.error(err)}
@@ -47,7 +73,7 @@ async function saveEvaluation(){
   if(!requireDb())return;const rows=collectScores();if(!rows.length){alert('평가 영역을 하나 이상 선택해 주세요.');return}const btn=el('saveEvaluationButton');btn.disabled=true;el('saveStatus').innerHTML='<span class="spinner"></span>학생정보와 평가를 저장하고 있습니다...';
   try{
     const studentId=await saveStudent();const scores={};rows.forEach(r=>scores[r.id]=r.score);const key=evaluationKey();
-    await state.db.collection('students').doc(studentId).collection('evaluations').doc(key).set({evaluationKey:key,year:Number(el('evaluationYear').value),month:monthNumber(),selectedSubjects:rows.map(r=>r.id),scores,teacherName:el('teacherName').value.trim(),strengths:el('customPos').value.trim(),improvements:el('customNeg').value.trim(),feedback:el('teacherFeedback').value.trim(),updatedBy:state.user.email,updatedAt:firebase.firestore.FieldValue.serverTimestamp()},{merge:true});
+    await state.db.collection('students').doc(studentId).collection('evaluations').doc(key).set({evaluationKey:key,year:Number(el('evaluationYear').value),month:monthNumber(),selectedSubjects:rows.map(r=>r.id),scores,teacherName:el('teacherName').value.trim(),strengths:el('customPos').value.trim(),improvements:el('customNeg').value.trim(),feedback:el('teacherFeedback').value.trim(),updatedBy:state.user.email||state.user.uid||'anonymous',updatedAt:firebase.firestore.FieldValue.serverTimestamp()},{merge:true});
     await loadStudents();el('studentPicker').value=studentId;await loadEvaluationHistory(studentId);el('evaluationHistory').value=key;el('saveStatus').innerHTML=`<span style="color:var(--green)">✓ ${escapeHtml(el('studentName').value)} · ${key} 평가가 저장되었습니다.</span>`;
   }catch(err){console.error(err);el('saveStatus').innerHTML=`<span style="color:var(--red)">⚠️ 저장 실패: ${escapeHtml(err.message||String(err))}</span>`}finally{btn.disabled=false}
 }
