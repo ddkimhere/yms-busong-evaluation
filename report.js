@@ -1,5 +1,4 @@
-const GEMINI_API_KEY_STORAGE='yms_evaluation_gemini_api_key';
-const GEMINI_MODEL='gemini-2.5-flash';
+const GEMINI_PROXY_URL='https://yms-grammar-api.vercel.app/api/gemini';
 
 // 2022 개정 국가 영어과 교육과정의 읽기 성취기준과
 // 시험의 지문 난도·문항 사고 수준을 함께 비교한 학부모 안내용 예상 수준입니다.
@@ -63,35 +62,20 @@ function cleanAiComment(text){
 }
 
 async function generateAiEvaluationComment(){
-  const apiInput=document.getElementById('apiKey');
   const status=document.getElementById('aiStatus');
   const output=document.getElementById('teacherFeedback');
   const button=document.getElementById('aiButton');
-  if(!apiInput||!output||!button)return;
+  if(!output||!button)return;
 
-  const apiKey=apiInput.value.trim();
-  if(!apiKey){
-    const details=apiInput.closest('details');
-    if(details)details.open=true;
-    if(status)status.textContent='Gemini API Key를 먼저 입력해 주세요.';
-    apiInput.focus();
-    return;
-  }
-
-  localStorage.setItem(GEMINI_API_KEY_STORAGE,apiKey);
-  updateApiKeyUi(true);
   button.disabled=true;
   const originalText=button.textContent;
   button.textContent='🤖 AI 종합 의견 작성 중...';
   if(status)status.textContent='학생 점수와 Growth Test 정보를 분석하고 있습니다...';
 
   try{
-    const response=await fetch(`https://generativelanguage.googleapis.com/v1beta/models/${encodeURIComponent(GEMINI_MODEL)}:generateContent`,{
+    const response=await fetch(GEMINI_PROXY_URL,{
       method:'POST',
-      headers:{
-        'Content-Type':'application/json',
-        'x-goog-api-key':apiKey
-      },
+      headers:{'Content-Type':'application/json'},
       body:JSON.stringify({
         contents:[{role:'user',parts:[{text:buildEvaluationPrompt()}]}],
         generationConfig:{
@@ -104,7 +88,7 @@ async function generateAiEvaluationComment(){
 
     const data=await response.json().catch(()=>({}));
     if(!response.ok){
-      const msg=data?.error?.message||`Gemini API 오류 (${response.status})`;
+      const msg=data?.error?.message||data?.message||`AI 서버 오류 (${response.status})`;
       throw new Error(msg);
     }
 
@@ -123,42 +107,20 @@ async function generateAiEvaluationComment(){
   }
 }
 
-function updateApiKeyUi(hasKey){
-  const apiInput=document.getElementById('apiKey');
-  const details=apiInput?.closest('details');
-  const summary=details?.querySelector('summary');
-  if(!details)return;
-  if(!hasKey)details.open=true;
-  if(summary)summary.textContent=hasKey?'🔑 Gemini API Key 설정 · 저장됨':'🔑 Gemini API Key 입력 (처음 1회 필수)';
-}
-
 function setupEvaluationAI(){
-  const apiInput=document.getElementById('apiKey');
   const button=document.getElementById('aiButton');
   const status=document.getElementById('aiStatus');
-  if(!apiInput||!button)return;
+  if(!button)return;
 
-  const savedKey=localStorage.getItem(GEMINI_API_KEY_STORAGE)||'';
-  if(savedKey)apiInput.value=savedKey;
-  updateApiKeyUi(!!savedKey);
-
-  apiInput.addEventListener('change',()=>{
-    const key=apiInput.value.trim();
-    if(key){
-      localStorage.setItem(GEMINI_API_KEY_STORAGE,key);
-      updateApiKeyUi(true);
-      if(status)status.textContent='✓ Gemini API Key가 이 브라우저에 저장되었습니다.';
-    }else{
-      localStorage.removeItem(GEMINI_API_KEY_STORAGE);
-      updateApiKeyUi(false);
-      if(status)status.textContent='Gemini API Key를 입력해 주세요.';
-    }
-  });
+  // 이전 버전의 API Key 입력 UI는 더 이상 사용하지 않습니다.
+  const apiInput=document.getElementById('apiKey');
+  const apiDetails=apiInput?.closest('details');
+  if(apiDetails)apiDetails.remove();
+  localStorage.removeItem('yms_evaluation_gemini_api_key');
+  localStorage.removeItem('yms_evaluation_gemini_key');
 
   button.onclick=generateAiEvaluationComment;
-  if(status)status.textContent=savedKey
-    ?'Gemini가 연결되어 있습니다. 버튼을 누르면 이번 달 평가 내용을 바탕으로 5문장 종합 의견을 작성합니다.'
-    :'아래 Gemini API Key 입력칸에 키를 한 번 입력하면 이 브라우저에 저장됩니다.';
+  if(status)status.textContent='AI가 연결되어 있습니다. 버튼을 누르면 이번 달 평가 내용을 바탕으로 5문장 종합 의견을 작성합니다.';
 
   const heading=[...document.querySelectorAll('h2')].find(h=>h.textContent.includes('AI 종합 의견'));
   const section=heading?.closest('section');
