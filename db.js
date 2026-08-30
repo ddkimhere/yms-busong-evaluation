@@ -5,6 +5,22 @@ async function initFirebaseFromSaved(){
   await connectFirebase(false);
 }
 
+function pinStorageKey(user=state.user){
+  return user&&user.uid?`yms_evaluation_pin_${user.uid}`:'';
+}
+
+function getStoredPinHash(user=state.user){
+  const key=pinStorageKey(user);
+  return key?localStorage.getItem(key):null;
+}
+
+async function hashPin(pin,user=state.user){
+  if(!user||!user.uid)throw new Error('로그인 정보가 없습니다.');
+  const data=new TextEncoder().encode(`${user.uid}:${pin}`);
+  const digest=await crypto.subtle.digest('SHA-256',data);
+  return Array.from(new Uint8Array(digest)).map(b=>b.toString(16).padStart(2,'0')).join('');
+}
+
 async function connectFirebase(showMessage=true){
   try{
     const raw=el('firebaseConfigInput').value.trim();
@@ -24,6 +40,7 @@ async function connectFirebase(showMessage=true){
     state.auth=firebase.auth();
     state.db=firebase.firestore();
     state.user=null;
+    state.appUnlocked=false;
     state.firebaseReady=true;
 
     await state.auth.setPersistence(firebase.auth.Auth.Persistence.LOCAL);
@@ -32,32 +49,31 @@ async function connectFirebase(showMessage=true){
     el('firebaseConfigInput').value=JSON.stringify(config,null,2);
     el('authArea').classList.remove('hidden');
     updateAuthUI();
-    setDbStatus('Firebase 연결됨 · 선생님 로그인이 필요합니다.','warn');
+    setDbStatus('Firebase 연결됨 · 선생님 인증이 필요합니다.','warn');
 
     window.ymsAuthUnsubscribe=state.auth.onAuthStateChanged(async user=>{
       state.user=user||null;
-      updateAuthUI();
+      state.appUnlocked=false;
 
       if(user){
-        setDbStatus(`Firebase 연결됨 · ${user.email||'인증 사용자'} 로그인`,'on');
-        await Promise.all([loadTeachers(),loadStudents()]);
+        const hasPin=!!getStoredPinHash(user);
+        setDbStatus(hasPin
+          ?'Firebase 연결됨 · 휴대폰 뒷 4자리를 입력해 주세요.'
+          :'Firebase 연결됨 · 이 기기에서 사용할 휴대폰 뒷 4자리를 설정해 주세요.','warn');
       }else{
-        state.students=[];
-        state.teachers=[];
-        state.selectedStudentId=null;
-        el('studentPicker').innerHTML='<option value="">로그인 후 학생 목록을 불러옵니다</option>';
-        el('teacherOptions').innerHTML='';
-        el('evaluationHistory').innerHTML='<option value="">저장된 평가가 없습니다</option>';
-        setDbStatus('Firebase 연결됨 · 선생님 로그인이 필요합니다.','warn');
+        clearLoadedDbState();
+        setDbStatus('Firebase 연결됨 · 새 기기에서는 최초 1회 계정 로그인이 필요합니다.','warn');
       }
+      updateAuthUI();
     });
 
-    if(showMessage)setDbStatus('Firebase 연결됨 · 선생님 로그인이 필요합니다.','warn');
+    if(showMessage)setDbStatus('Firebase 연결됨 · 선생님 인증이 필요합니다.','warn');
   }catch(err){
     state.firebaseReady=false;
     state.auth=null;
     state.db=null;
     state.user=null;
+    state.appUnlocked=false;
     updateAuthUI();
     setDbStatus('Firebase 연결 실패: '+(err.message||String(err)),'');
     if(showMessage)alert('Firebase 연결 오류: '+(err.message||String(err)));
@@ -71,12 +87,27 @@ function resetFirebaseConfig(){
   location.reload();
 }
 
+function clearLoadedDbState(){
+  state.students=[];
+  state.teachers=[];
+  state.selectedStudentId=null;
+  if(el('studentPicker'))el('studentPicker').innerHTML='<option value="">로그인 후 학생 목록을 불러옵니다</option>';
+  if(el('teacherOptions'))el('teacherOptions').innerHTML='';
+  if(el('evaluationHistory'))el('evaluationHistory').innerHTML='<option value="">저장된 평가가 없습니다</option>';
+}
+
 function updateAuthUI(){
   const authArea=el('authArea');
+  const credentialArea=el('credentialLoginArea');
+  const pinArea=el('pinArea');
   const loginButton=el('loginButton');
   const logoutButton=el('logoutButton');
+  const lockButton=el('lockButton');
   const emailInput=el('loginEmail');
   const passwordInput=el('loginPassword');
+  const pinInput=el('pinInput');
+  const pinActionButton=el('pinActionButton');
+  const pinHelpText=el('pinHelpText');
   const userText=el('loginUserText');
 
   if(!state.firebaseReady){
@@ -87,12 +118,41 @@ function updateAuthUI(){
 
   authArea.classList.remove('hidden');
   const signedIn=!!state.user;
-  loginButton.classList.toggle('hidden',signedIn);
-  logoutButton.classList.toggle('hidden',!signedIn);
-  emailInput.disabled=signedIn;
-  passwordInput.disabled=signedIn;
-  userText.textContent=signedIn?`로그인: ${state.user.email||'인증 사용자'}`:'Firebase 계정으로 로그인해 주세요.';
-  if(signedIn)passwordInput.value='';
+
+  if(!signedIn){
+    credentialArea.classList.remove('hidden');
+    pinArea.classList.add('hidden');
+    logoutButton.classList.add('hidden');
+    lockButton.classList.add('hidden');
+    emailInput.disabled=false;
+    passwordInput.disabled=false;
+    loginButton.disabled=false;
+    userText.textContent='새 기기에서는 최초 1회 Firebase 계정으로 로그인해 주세요.';
+    return;
+  }
+
+  credentialArea.classList.add('hidden');
+  logoutButton.classList.remove('hidden');
+
+  if(state.appUnlocked){
+    pinArea.classList.add('hidden');
+    lockButton.classList.remove('hidden');
+    userText.textContent=`사용 중: ${state.user.email||'선생님 계정'}`;
+    return;
+  }
+
+  lockButton.classList.add('hidden');
+  pinArea.classList.remove('hidden');
+  if(pinInput)pinInput.value='';
+  const hasPin=!!getStoredPinHash();
+  if(hasPin){
+    pinActionButton.textContent='🔓 뒷 4자리로 열기';
+    pinHelpText.textContent='이 휴대폰에 등록한 휴대폰 번호 뒷 4자리를 입력하세요.';
+  }else{
+    pinActionButton.textContent='📱 뒷 4자리 등록 · 시작';
+    pinHelpText.textContent='최초 1회만 휴대폰 번호 뒷 4자리를 등록하면 다음부터는 이 4자리만 입력하면 됩니다.';
+  }
+  userText.textContent=`인증 계정: ${state.user.email||'선생님 계정'}`;
 }
 
 async function loginFirebase(){
@@ -115,8 +175,54 @@ async function loginFirebase(){
   }
 }
 
+async function handlePinAction(){
+  if(!state.user){alert('먼저 선생님 계정으로 로그인해 주세요.');return}
+  const pin=el('pinInput').value.trim();
+  if(!/^\d{4}$/.test(pin)){
+    alert('휴대폰 번호 뒷 4자리를 숫자 4자리로 입력해 주세요.');
+    return;
+  }
+
+  const btn=el('pinActionButton');
+  btn.disabled=true;
+  try{
+    const enteredHash=await hashPin(pin);
+    const storedHash=getStoredPinHash();
+    if(!storedHash){
+      localStorage.setItem(pinStorageKey(),enteredHash);
+    }else if(storedHash!==enteredHash){
+      alert('휴대폰 번호 뒷 4자리가 맞지 않습니다.');
+      el('pinInput').value='';
+      return;
+    }
+    await unlockEvaluation();
+  }catch(err){
+    console.error(err);
+    alert('PIN 처리 중 오류가 발생했습니다: '+(err.message||err));
+  }finally{
+    btn.disabled=false;
+  }
+}
+
+async function unlockEvaluation(){
+  if(!state.user||!state.db)return;
+  state.appUnlocked=true;
+  updateAuthUI();
+  setDbStatus('Firebase 연결됨 · Evaluation 사용 가능','on');
+  await Promise.all([loadTeachers(),loadStudents()]);
+}
+
+function lockEvaluation(){
+  if(!state.user)return;
+  state.appUnlocked=false;
+  clearLoadedDbState();
+  updateAuthUI();
+  setDbStatus('잠금됨 · 휴대폰 뒷 4자리를 입력해 주세요.','warn');
+}
+
 async function logoutFirebase(){
   if(!state.auth)return;
+  state.appUnlocked=false;
   await state.auth.signOut();
 }
 
@@ -141,11 +247,15 @@ function requireDb(){
     alert('먼저 선생님 계정으로 로그인해 주세요.');
     return false;
   }
+  if(!state.appUnlocked){
+    alert('휴대폰 번호 뒷 4자리를 입력해 Evaluation을 열어 주세요.');
+    return false;
+  }
   return true;
 }
 
 async function loadTeachers(){
-  if(!state.db||!state.user)return;
+  if(!state.db||!state.user||!state.appUnlocked)return;
   try{
     const snap=await state.db.collection('teachers').get();
     state.teachers=snap.docs
@@ -174,7 +284,7 @@ async function ensureTeacher(name){
 }
 
 async function loadStudents(){
-  if(!state.db||!state.user)return;
+  if(!state.db||!state.user||!state.appUnlocked)return;
   try{
     const snap=await state.db.collection('students').get();
     state.students=snap.docs
@@ -293,7 +403,7 @@ async function saveEvaluation(){
 }
 
 async function loadEvaluationHistory(studentId=state.selectedStudentId){
-  if(!studentId||!state.db||!state.user){
+  if(!studentId||!state.db||!state.user||!state.appUnlocked){
     el('evaluationHistory').innerHTML='<option value="">저장된 평가가 없습니다</option>';
     return;
   }
