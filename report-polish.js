@@ -5,8 +5,7 @@
     style.id='reportPolishStyles';
     style.textContent=`
       .student-strip{margin:0 0 22px!important;padding:0!important;background:transparent!important;border-radius:14px!important;line-height:1.4!important;color:#26354d!important;overflow:hidden;border:1px solid #dfe6f2;box-shadow:0 4px 14px rgba(26,50,99,.06)}
-      .student-profile-top{display:flex;align-items:center;gap:14px;padding:17px 18px;background:linear-gradient(135deg,#f3f7ff 0%,#ffffff 100%);border-bottom:1px solid #e6ebf3}
-      .student-avatar{width:44px;height:44px;flex:0 0 44px;border-radius:13px;background:#1A3263;color:#fff;display:flex;align-items:center;justify-content:center;font-size:19px;font-weight:900;box-shadow:0 4px 10px rgba(26,50,99,.18)}
+      .student-profile-top{display:flex;align-items:center;padding:17px 18px;background:linear-gradient(135deg,#f3f7ff 0%,#ffffff 100%);border-bottom:1px solid #e6ebf3}
       .student-kicker{font-size:10px;letter-spacing:1.3px;color:#8390a6;font-weight:800;margin-bottom:2px}
       .student-name{font-size:21px;line-height:1.2;color:#172f5f;font-weight:900;letter-spacing:-.3px}
       .student-info-grid{display:grid;grid-template-columns:repeat(3,1fr);background:#fff}
@@ -57,10 +56,8 @@
     const grade=document.getElementById('studentLevel')?.value||'학년 미입력';
     const book=document.getElementById('currentBook')?.value.trim()||'교재 미입력';
     const teacher=document.getElementById('teacherName')?.value.trim()||'미지정';
-    const initial=name.trim().charAt(0)||'Y';
     strip.innerHTML=`
       <div class="student-profile-top">
-        <div class="student-avatar">${escapeHtml(initial)}</div>
         <div>
           <div class="student-kicker">STUDENT PROFILE</div>
           <div class="student-name">${escapeHtml(name)}</div>
