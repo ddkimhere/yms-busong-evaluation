@@ -7,7 +7,7 @@ const SUBJECTS=[
   {id:'attendance',label:'출석',full:'출석 (Attendance)',checked:true},
   {id:'homework',label:'과제',full:'과제 (Homework)',checked:true}
 ];
-const state={scores:{},chart:null,db:null,auth:null,user:null,students:[],teachers:[],selectedStudentId:null,firebaseReady:false,appUnlocked:false};
+const state={scores:{},chart:null,db:null,auth:null,user:null,staffProfile:null,isAdmin:false,students:[],teachers:[],staffAccounts:[],selectedStudentId:null,firebaseReady:false,appUnlocked:false};
 function el(id){return document.getElementById(id)}
 function escapeHtml(str){return String(str).replace(/[&<>'\"]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;',"'":'&#39;','\"':'&quot;'}[c]))}
 function getSchoolType(){return document.querySelector('input[name="schoolType"]:checked').value}
