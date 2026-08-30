@@ -71,12 +71,15 @@ async function generateAiEvaluationComment(){
 
   const apiKey=apiInput.value.trim();
   if(!apiKey){
+    const details=apiInput.closest('details');
+    if(details)details.open=true;
     if(status)status.textContent='Gemini API Key를 먼저 입력해 주세요.';
     apiInput.focus();
     return;
   }
 
   localStorage.setItem(GEMINI_API_KEY_STORAGE,apiKey);
+  updateApiKeyUi(true);
   button.disabled=true;
   const originalText=button.textContent;
   button.textContent='🤖 AI 종합 의견 작성 중...';
@@ -120,6 +123,15 @@ async function generateAiEvaluationComment(){
   }
 }
 
+function updateApiKeyUi(hasKey){
+  const apiInput=document.getElementById('apiKey');
+  const details=apiInput?.closest('details');
+  const summary=details?.querySelector('summary');
+  if(!details)return;
+  if(!hasKey)details.open=true;
+  if(summary)summary.textContent=hasKey?'🔑 Gemini API Key 설정 · 저장됨':'🔑 Gemini API Key 입력 (처음 1회 필수)';
+}
+
 function setupEvaluationAI(){
   const apiInput=document.getElementById('apiKey');
   const button=document.getElementById('aiButton');
@@ -128,16 +140,25 @@ function setupEvaluationAI(){
 
   const savedKey=localStorage.getItem(GEMINI_API_KEY_STORAGE)||'';
   if(savedKey)apiInput.value=savedKey;
+  updateApiKeyUi(!!savedKey);
+
   apiInput.addEventListener('change',()=>{
     const key=apiInput.value.trim();
-    if(key)localStorage.setItem(GEMINI_API_KEY_STORAGE,key);
-    else localStorage.removeItem(GEMINI_API_KEY_STORAGE);
+    if(key){
+      localStorage.setItem(GEMINI_API_KEY_STORAGE,key);
+      updateApiKeyUi(true);
+      if(status)status.textContent='✓ Gemini API Key가 이 브라우저에 저장되었습니다.';
+    }else{
+      localStorage.removeItem(GEMINI_API_KEY_STORAGE);
+      updateApiKeyUi(false);
+      if(status)status.textContent='Gemini API Key를 입력해 주세요.';
+    }
   });
 
   button.onclick=generateAiEvaluationComment;
   if(status)status.textContent=savedKey
     ?'Gemini가 연결되어 있습니다. 버튼을 누르면 이번 달 평가 내용을 바탕으로 5문장 종합 의견을 작성합니다.'
-    :'Gemini API Key를 한 번 입력하면 이 브라우저에 저장되며, 이후 버튼으로 종합 의견을 자동 작성할 수 있습니다.';
+    :'아래 Gemini API Key 입력칸에 키를 한 번 입력하면 이 브라우저에 저장됩니다.';
 
   const heading=[...document.querySelectorAll('h2')].find(h=>h.textContent.includes('AI 종합 의견'));
   const section=heading?.closest('section');
