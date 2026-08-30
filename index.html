@@ -21,13 +21,30 @@
       <div class="db-title">☁️ Evaluation 데이터베이스</div>
       <span id="firebaseBadge" class="status-badge warn">Firebase 미연결</span>
     </div>
+
     <div id="authArea" class="hidden">
-      <div class="grid-2">
-        <div class="field"><label for="loginEmail">선생님 로그인 이메일</label><input id="loginEmail" type="email" placeholder="teacher@example.com"></div>
-        <div class="field"><label for="loginPassword">비밀번호</label><input id="loginPassword" type="password" placeholder="비밀번호"></div>
+      <div id="credentialLoginArea">
+        <div class="info" style="margin-bottom:12px">새 휴대폰에서는 최초 1회만 선생님 계정으로 로그인합니다. 이후에는 휴대폰 번호 뒷 4자리만 입력하면 됩니다.</div>
+        <div class="grid-2">
+          <div class="field"><label for="loginEmail">선생님 계정 이메일</label><input id="loginEmail" type="email" placeholder="teacher@example.com" autocomplete="username"></div>
+          <div class="field"><label for="loginPassword">최초 로그인 비밀번호</label><input id="loginPassword" type="password" placeholder="비밀번호" autocomplete="current-password" onkeydown="if(event.key==='Enter')loginFirebase()"></div>
+        </div>
+        <div class="button-row"><button id="loginButton" class="btn" type="button" onclick="loginFirebase()">🔐 최초 로그인</button></div>
       </div>
-      <div class="button-row"><button id="loginButton" class="btn" type="button" onclick="loginFirebase()">🔐 로그인</button><button id="logoutButton" class="btn secondary hidden" type="button" onclick="logoutFirebase()">로그아웃</button><span id="loginUserText" class="mini"></span></div>
+
+      <div id="pinArea" class="hidden">
+        <div class="field" style="max-width:360px"><label for="pinInput">휴대폰 번호 뒷 4자리</label><input id="pinInput" type="password" inputmode="numeric" pattern="[0-9]*" maxlength="4" placeholder="0000" autocomplete="off" onkeydown="if(event.key==='Enter')handlePinAction()"></div>
+        <div class="button-row"><button id="pinActionButton" class="btn" type="button" onclick="handlePinAction()">🔓 뒷 4자리로 열기</button></div>
+        <div id="pinHelpText" class="mini"></div>
+      </div>
+
+      <div class="button-row" style="margin-top:10px">
+        <button id="lockButton" class="btn secondary hidden" type="button" onclick="lockEvaluation()">🔒 잠그기</button>
+        <button id="logoutButton" class="btn secondary hidden" type="button" onclick="logoutFirebase()">이 기기 계정 로그아웃</button>
+        <span id="loginUserText" class="mini"></span>
+      </div>
     </div>
+
     <div id="dbStatusText" class="db-status-text">Firebase 설정을 연결하면 학생과 월별 평가를 저장할 수 있습니다.</div>
     <details>
       <summary>Firebase 연결 설정</summary>
