@@ -148,6 +148,7 @@
       <div class="report-title">YMS Monthly Evaluation Report</div><div id="reportMonth" class="report-subtitle">2026년 8월 정기 평가</div>
       <div class="report-white">
         <div id="studentStrip" class="student-strip"></div>
+        <div id="growthTestReportBlock"></div>
         <div class="report-h3">📈 영역별 성취 레벨</div>
         <table class="score-table"><thead><tr><td>평가 영역</td><td>이번달 점수</td></tr></thead><tbody id="reportTableBody"></tbody></table>
         <div class="report-h3">📊 영역별 성적</div><div class="chart-box"><canvas id="scoreChart" width="720" height="330"></canvas></div>
@@ -162,5 +163,45 @@
 <script src="report.js"></script>
 <script src="app-ui.js"></script>
 <script src="report-polish.js"></script>
+<script>
+(function(){
+  function forceGrowthReport(){
+    const block=document.getElementById('growthTestReportBlock');
+    const select=document.getElementById('growthTestCode');
+    if(!block||!select)return;
+    const code=select.value||'';
+    if(!code){block.innerHTML='';return;}
+    if(typeof window.growthReportHtml==='function'){
+      block.innerHTML=window.growthReportHtml(code)||'';
+    }else if(typeof GROWTH_TESTS!=='undefined'&&GROWTH_TESTS[code]){
+      const m=GROWTH_TESTS[code];
+      block.innerHTML='<div class="growth-report"><div class="growth-report-head"><span class="growth-code">📘 '+code+'</span><span class="growth-stage">'+(m.stage||'')+'</span></div><div class="growth-label">국가 교육과정 기준 예상 수준</div><div class="growth-text"><strong>'+(m.gradeLevel||'')+'</strong></div><div class="growth-label">이번 Growth Test는 어떤 시험인가요?</div><div class="growth-text">'+(m.summary||'')+'</div><div class="growth-label">주요 평가 영역</div><div class="growth-text"><strong>'+(m.areas||'')+'</strong></div><div class="growth-label">이번 시험의 의미</div><div class="growth-text">'+(m.meaning||'')+'</div></div>';
+    }
+  }
+
+  function installForceFix(){
+    const field=document.getElementById('growthTestField');
+    if(field)field.classList.remove('hidden');
+    const select=document.getElementById('growthTestCode');
+    if(select){
+      select.addEventListener('change',function(){
+        if(typeof window.renderGrowthTestPreview==='function')window.renderGrowthTestPreview();
+        forceGrowthReport();
+      });
+    }
+    const original=window.generateReport;
+    if(typeof original==='function'&&!window.__forceGrowthReportInstalled){
+      window.__forceGrowthReportInstalled=true;
+      window.generateReport=function(){
+        const result=original.apply(this,arguments);
+        setTimeout(forceGrowthReport,0);
+        return result;
+      };
+    }
+  }
+  if(document.readyState==='loading')document.addEventListener('DOMContentLoaded',()=>setTimeout(installForceFix,120));
+  else setTimeout(installForceFix,120);
+})();
+</script>
 </body>
 </html>
