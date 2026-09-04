@@ -26,64 +26,72 @@
     'M3-7':{stage:'고등 심화 독해 입문',gradeLevel:'고2 입문',areas:'중심 내용 · 고난도 추론 · 논리 · 종합 독해',summary:'현재 YMS 중등 Growth Test의 최고 단계로 고1 상위권에서 고2 입문 수준의 독해 사고력을 확인합니다.',meaning:'복잡한 문장 구조와 추상적 지문에서도 핵심 논리와 정답 근거를 끝까지 추적하는 능력을 확인합니다.'}
   };
 
-  function extendGrowthData(){
-    if(typeof GROWTH_TESTS==='undefined')return;
-    Object.entries(MIDDLE_GROWTH_TESTS).forEach(([code,meta])=>{
-      if(!GROWTH_TESTS[code])GROWTH_TESTS[code]=meta;
-      else Object.assign(GROWTH_TESTS[code],meta);
-      if(typeof GROWTH_TEST_ORDER!=='undefined'&&!GROWTH_TEST_ORDER.includes(code))GROWTH_TEST_ORDER.push(code);
-    });
-  }
-  extendGrowthData();
+  const E_GRADE_LEVELS={
+    'E1-1':'초6 후반 ~ 중1 입문','E1-2':'초6 후반 ~ 중1 입문','E1-3':'중1 입문','E1-4':'중1 초반','E1-5':'중1 초 ~ 중반','E1-6':'중1 중반',
+    'E2-1':'중1 중반','E2-2':'중1 중 ~ 후반','E2-3':'중1 후반','E2-4':'중1 후반','E2-5':'중1 후반 ~ 중2 입문','E2-6':'중2 입문','E3-1':'중2 초반','E3-2':'중2 초 ~ 중반'
+  };
 
-  function syncGrowthTestSelect(){
+  function mergeData(){
+    if(typeof GROWTH_TESTS==='undefined')return;
+    Object.entries(E_GRADE_LEVELS).forEach(([code,level])=>{if(GROWTH_TESTS[code])GROWTH_TESTS[code].gradeLevel=level});
+    Object.entries(MIDDLE_GROWTH_TESTS).forEach(([code,meta])=>{GROWTH_TESTS[code]={...(GROWTH_TESTS[code]||{}),...meta}});
+    if(typeof GROWTH_TEST_ORDER!=='undefined')Object.keys(MIDDLE_GROWTH_TESTS).forEach(code=>{if(!GROWTH_TEST_ORDER.includes(code))GROWTH_TEST_ORDER.push(code)});
+  }
+
+  function syncSelect(){
+    mergeData();
     const select=document.getElementById('growthTestCode');
-    if(!select||typeof GROWTH_TESTS==='undefined')return;
+    if(!select||typeof GROWTH_TESTS==='undefined'||typeof GROWTH_TEST_ORDER==='undefined')return;
     const current=select.value;
     select.innerHTML='<option value="">선택 안 함</option>'+GROWTH_TEST_ORDER.map(code=>{
-      const meta=GROWTH_TESTS[code];
-      const level=meta?.gradeLevel?` · ${meta.gradeLevel}`:'';
-      return `<option value="${escapeHtml(code)}">${escapeHtml(code)} · ${escapeHtml(meta?.stage||'')}${escapeHtml(level)}</option>`;
+      const m=GROWTH_TESTS[code]||{};
+      const level=m.gradeLevel?` · ${m.gradeLevel}`:'';
+      return `<option value="${escapeHtml(code)}">${escapeHtml(code)} · ${escapeHtml(m.stage||'')}${escapeHtml(level)}</option>`;
     }).join('');
     if(current&&GROWTH_TESTS[current])select.value=current;
   }
 
-  function addPolishStyles(){
+  function addStyles(){
     if(document.getElementById('reportPolishStyles'))return;
     const style=document.createElement('style');
     style.id='reportPolishStyles';
     style.textContent=`
       .student-strip{margin:0 0 22px!important;padding:0!important;background:transparent!important;border-radius:14px!important;line-height:1.4!important;color:#26354d!important;overflow:hidden;border:1px solid #dfe6f2;box-shadow:0 4px 14px rgba(26,50,99,.06)}
       .student-profile-top{display:flex;align-items:center;padding:17px 18px;background:linear-gradient(135deg,#f3f7ff 0%,#ffffff 100%);border-bottom:1px solid #e6ebf3}
-      .student-kicker{font-size:10px;letter-spacing:1.3px;color:#8390a6;font-weight:800;margin-bottom:2px}
-      .student-name{font-size:21px;line-height:1.2;color:#172f5f;font-weight:900;letter-spacing:-.3px}
-      .student-info-grid{display:grid;grid-template-columns:repeat(3,1fr);background:#fff}
-      .student-info-item{padding:12px 15px;border-right:1px solid #edf0f5;min-width:0}
-      .student-info-item:last-child{border-right:0}
-      .student-info-label{display:block;font-size:10px;color:#8a95a8;font-weight:800;letter-spacing:.4px;margin-bottom:4px}
-      .student-info-value{display:block;font-size:13px;color:#273751;font-weight:800;white-space:normal;word-break:keep-all}
+      .student-kicker{font-size:10px;letter-spacing:1.3px;color:#8390a6;font-weight:800;margin-bottom:2px}.student-name{font-size:21px;line-height:1.2;color:#172f5f;font-weight:900}
+      .student-info-grid{display:grid;grid-template-columns:repeat(3,1fr);background:#fff}.student-info-item{padding:12px 15px;border-right:1px solid #edf0f5}.student-info-item:last-child{border-right:0}.student-info-label{display:block;font-size:10px;color:#8a95a8;font-weight:800;margin-bottom:4px}.student-info-value{display:block;font-size:13px;color:#273751;font-weight:800}
       .growth-report{margin:0 0 27px!important;padding:0!important;border:1.5px solid #cddaf0!important;border-radius:16px!important;background:#fff!important;overflow:hidden;box-shadow:0 6px 18px rgba(26,50,99,.07)}
-      .growth-report-top{display:grid;grid-template-columns:minmax(0,1fr) 245px;gap:0;background:linear-gradient(135deg,#edf4ff 0%,#f9fbff 68%,#fff9ed 100%);border-bottom:1px solid #dce5f3}
-      .growth-identity{padding:18px 20px}.growth-eyebrow{font-size:10px;letter-spacing:1.25px;font-weight:900;color:#6d7e9b;margin-bottom:7px}
-      .growth-title-row{display:flex;align-items:center;gap:10px;flex-wrap:wrap}.growth-code{font-size:26px!important;line-height:1;font-weight:900!important;color:#173b70!important;letter-spacing:-.4px}
-      .growth-stage{padding:6px 10px!important;border-radius:999px!important;background:#dbe8ff!important;color:#214e8c!important;font-size:12px!important;font-weight:800!important}
-      .growth-level-card{padding:15px 17px;background:rgba(255,249,234,.84);border-left:1px solid #eadfca;display:flex;flex-direction:column;justify-content:center}
-      .growth-level-label{font-size:10px;color:#8d713c;font-weight:900;letter-spacing:.3px;margin-bottom:5px}.growth-level-value{font-size:16px;line-height:1.35;color:#8a5a00;font-weight:900;word-break:keep-all}.growth-level-sub{font-size:9.5px;line-height:1.4;color:#a08d69;margin-top:5px}
-      .growth-content{padding:16px 19px 13px}.growth-summary-box{padding:13px 15px;border-radius:11px;background:#f8faff;border:1px solid #e5ebf5;margin-bottom:11px}
-      .growth-block-label{display:flex;align-items:center;gap:6px;font-size:11px;color:#53647f;font-weight:900;margin-bottom:6px}.growth-block-text{font-size:13px;line-height:1.65;color:#283851}
-      .growth-areas-wrap{display:flex;flex-wrap:wrap;gap:6px;margin-top:2px}.growth-area-tag{padding:6px 9px;border-radius:8px;background:#eef3fb;border:1px solid #dbe4f1;color:#24466f;font-size:11px;font-weight:800}
-      .growth-meaning{padding:12px 14px;border-left:4px solid #1A3263;background:#f8f9fc;border-radius:0 10px 10px 0;color:#283851;font-size:12.5px;line-height:1.65}
-      .growth-progress{display:flex!important;gap:4px!important;flex-wrap:wrap!important;margin:14px 19px 0!important;padding-top:11px;border-top:1px solid #edf0f5}.growth-step{font-size:9.5px!important;padding:4px 6px!important;border-radius:999px!important;background:#f0f2f5!important;color:#9aa3b0!important}.growth-step.current{background:#1A3263!important;color:#fff!important;font-weight:900!important;box-shadow:0 2px 6px rgba(26,50,99,.18)}
-      .growth-grade-note{margin:8px 19px 15px!important;font-size:9px!important;line-height:1.45!important;color:#9aa3b1!important}
-      .growth-preview-mini .growth-grade{display:inline-flex;align-items:center;margin:7px 0;padding:5px 10px;border-radius:999px;background:#fff4dc;color:#8a5a00;font-weight:800;font-size:12px}
-      @media(max-width:620px){.student-info-grid{grid-template-columns:1fr}.student-info-item{border-right:0;border-bottom:1px solid #edf0f5}.student-info-item:last-child{border-bottom:0}.growth-report-top{grid-template-columns:1fr}.growth-level-card{border-left:0;border-top:1px solid #eadfca}}
+      .growth-report-top{display:grid;grid-template-columns:minmax(0,1fr) 280px;background:linear-gradient(135deg,#edf4ff 0%,#f9fbff 68%,#fff9ed 100%);border-bottom:1px solid #dce5f3}
+      .growth-identity{padding:18px 20px}.growth-eyebrow{font-size:10px;letter-spacing:1.25px;font-weight:900;color:#6d7e9b;margin-bottom:7px}.growth-title-row{display:flex;align-items:center;gap:10px;flex-wrap:wrap}.growth-code{font-size:26px!important;font-weight:900!important;color:#173b70!important}.growth-stage{padding:6px 10px!important;border-radius:999px!important;background:#dbe8ff!important;color:#214e8c!important;font-size:12px!important;font-weight:800!important}
+      .growth-level-card{padding:15px 17px;background:rgba(255,249,234,.84);border-left:1px solid #eadfca;display:flex;flex-direction:column;justify-content:center}.growth-level-label{font-size:10px;color:#8d713c;font-weight:900;margin-bottom:5px}.growth-level-value{font-size:16px;line-height:1.35;color:#8a5a00;font-weight:900}.growth-level-sub{font-size:9.5px;line-height:1.4;color:#a08d69;margin-top:5px}
+      .growth-content{padding:16px 19px 13px}.growth-summary-box{padding:13px 15px;border-radius:11px;background:#f8faff;border:1px solid #e5ebf5;margin-bottom:11px}.growth-block-label{display:flex;align-items:center;gap:6px;font-size:11px;color:#53647f;font-weight:900;margin-bottom:6px}.growth-block-text{font-size:13px;line-height:1.65;color:#283851}.growth-areas-wrap{display:flex;flex-wrap:wrap;gap:6px}.growth-area-tag{padding:6px 9px;border-radius:8px;background:#eef3fb;border:1px solid #dbe4f1;color:#24466f;font-size:11px;font-weight:800}.growth-meaning{padding:12px 14px;border-left:4px solid #1A3263;background:#f8f9fc;border-radius:0 10px 10px 0;color:#283851;font-size:12.5px;line-height:1.65}
+      .growth-progress{display:flex!important;gap:4px!important;flex-wrap:wrap!important;margin:14px 19px 0!important;padding-top:11px;border-top:1px solid #edf0f5}.growth-step{font-size:9.5px!important;padding:4px 6px!important;border-radius:999px!important;background:#f0f2f5!important;color:#9aa3b0!important}.growth-step.current{background:#1A3263!important;color:#fff!important;font-weight:900!important}.growth-grade-note{margin:8px 19px 15px!important;font-size:9px!important;line-height:1.45!important;color:#9aa3b1!important}
+      .growth-preview-mini .growth-preview-level{display:inline-block;margin:7px 0;padding:5px 9px;border-radius:999px;background:#fff4dc;color:#8a5a00;font-weight:800;font-size:12px}
+      @media(max-width:620px){.student-info-grid,.growth-report-top{grid-template-columns:1fr}.student-info-item{border-right:0;border-bottom:1px solid #edf0f5}.growth-level-card{border-left:0;border-top:1px solid #eadfca}}
     `;
     document.head.appendChild(style);
   }
 
-  function renderPolishedStudentInfo(){
-    const strip=document.getElementById('studentStrip');
-    if(!strip)return;
+  function reportHtml(code){
+    mergeData();
+    const meta=typeof GROWTH_TESTS!=='undefined'?GROWTH_TESTS[code]:null;
+    if(!meta)return '';
+    const areas=String(meta.areas||'').split('·').map(v=>v.trim()).filter(Boolean);
+    return `<div class="growth-report"><div class="growth-report-top"><div class="growth-identity"><div class="growth-eyebrow">YMS GROWTH TEST · THIS MONTH</div><div class="growth-title-row"><span class="growth-code">📘 ${escapeHtml(code)}</span><span class="growth-stage">${escapeHtml(meta.stage||'')}</span></div></div><div class="growth-level-card"><div class="growth-level-label">국가 교육과정 기준 예상 수준</div><div class="growth-level-value">${escapeHtml(meta.gradeLevel||'-')}</div><div class="growth-level-sub">2022 개정 영어과 교육과정 비교 기준</div></div></div><div class="growth-content"><div class="growth-summary-box"><div class="growth-block-label">📘 이번 Growth Test는 어떤 시험인가요?</div><div class="growth-block-text">${escapeHtml(meta.summary||'')}</div></div><div class="growth-summary-box"><div class="growth-block-label">🎯 주요 평가 영역</div><div class="growth-areas-wrap">${areas.map(a=>`<span class="growth-area-tag">${escapeHtml(a)}</span>`).join('')}</div></div><div class="growth-block-label">💡 이번 시험의 의미</div><div class="growth-meaning">${escapeHtml(meta.meaning||'')}</div></div><div class="growth-progress">${GROWTH_TEST_ORDER.map(c=>`<span class="growth-step ${c===code?'current':''}">${escapeHtml(c)}</span>`).join('')}</div><div class="growth-grade-note">※ 예상 수준은 2022 개정 영어과 교육과정의 읽기 성취기준과 시험의 지문 난도·문항 사고 수준을 비교한 참고 정보이며, 교과서 출판사와 학교 진도에 따라 차이가 있을 수 있습니다.</div></div>`;
+  }
+
+  function preview(){
+    mergeData();
+    const box=document.getElementById('growthTestPreview');
+    const code=document.getElementById('growthTestCode')?.value||'';
+    if(!box)return;
+    const meta=typeof GROWTH_TESTS!=='undefined'?GROWTH_TESTS[code]:null;
+    if(!meta){box.textContent='시험코드를 선택하면 시험의 평가 성격과 예상 수준이 표시됩니다.';return}
+    box.innerHTML=`<strong>${escapeHtml(code)} · ${escapeHtml(meta.stage||'')}</strong><br><span class="growth-preview-level">국가 교육과정 기준 예상 수준 · ${escapeHtml(meta.gradeLevel||'-')}</span><br>${escapeHtml(meta.summary||'')}`;
+  }
+
+  function renderStudent(){
+    const strip=document.getElementById('studentStrip');if(!strip)return;
     const name=document.getElementById('studentName')?.value.trim()||'학생';
     const grade=document.getElementById('studentLevel')?.value||'학년 미입력';
     const book=document.getElementById('currentBook')?.value.trim()||'교재 미입력';
@@ -91,76 +99,40 @@
     strip.innerHTML=`<div class="student-profile-top"><div><div class="student-kicker">STUDENT PROFILE</div><div class="student-name">${escapeHtml(name)}</div></div></div><div class="student-info-grid"><div class="student-info-item"><span class="student-info-label">학년</span><span class="student-info-value">${escapeHtml(grade)}</span></div><div class="student-info-item"><span class="student-info-label">현재 교재</span><span class="student-info-value">${escapeHtml(book)}</span></div><div class="student-info-item"><span class="student-info-label">담임선생님</span><span class="student-info-value">${escapeHtml(teacher)}</span></div></div>`;
   }
 
-  function polishedGrowthReportHtml(code){
-    if(typeof GROWTH_TESTS==='undefined')return '';
-    const meta=GROWTH_TESTS[code];
-    if(!meta)return '';
-    const level=meta.gradeLevel||'';
-    const areas=String(meta.areas||'').split('·').map(v=>v.trim()).filter(Boolean);
-    return `<div class="growth-report"><div class="growth-report-top"><div class="growth-identity"><div class="growth-eyebrow">YMS GROWTH TEST · THIS MONTH</div><div class="growth-title-row"><span class="growth-code">${escapeHtml(code)}</span><span class="growth-stage">${escapeHtml(meta.stage)}</span></div></div><div class="growth-level-card"><div class="growth-level-label">국가 교육과정 기준 예상 수준</div><div class="growth-level-value">${escapeHtml(level)}</div><div class="growth-level-sub">2022 개정 영어과 교육과정 비교 기준</div></div></div><div class="growth-content"><div class="growth-summary-box"><div class="growth-block-label">📘 이번 시험의 성격</div><div class="growth-block-text">${escapeHtml(meta.summary)}</div></div><div class="growth-summary-box"><div class="growth-block-label">🎯 주요 평가 포인트</div><div class="growth-areas-wrap">${areas.map(a=>`<span class="growth-area-tag">${escapeHtml(a)}</span>`).join('')}</div></div><div class="growth-block-label">💡 이번 단계에서 확인하는 힘</div><div class="growth-meaning">${escapeHtml(meta.meaning)}</div></div><div class="growth-progress">${GROWTH_TEST_ORDER.map(c=>`<span class="growth-step ${c===code?'current':''}">${escapeHtml(c)}</span>`).join('')}</div><div class="growth-grade-note">※ 예상 수준은 2022 개정 영어과 교육과정의 읽기 성취기준과 시험의 지문 난도·문항 사고 수준을 비교한 참고 정보이며, 교과서 출판사와 학교 진도에 따라 차이가 있을 수 있습니다.</div></div>`;
-  }
+  function patch(){
+    mergeData();addStyles();syncSelect();
+    const field=document.getElementById('growthTestField');if(field)field.classList.remove('hidden');
 
-  function installMiddleGrowthFix(){
-    extendGrowthData();
-    syncGrowthTestSelect();
-    const field=document.getElementById('growthTestField');
-    if(field)field.classList.remove('hidden');
-
-    window.renderGrowthTestPreview=function(){
-      const box=document.getElementById('growthTestPreview');
-      const code=document.getElementById('growthTestCode')?.value||'';
-      if(!box)return;
-      const meta=GROWTH_TESTS[code];
-      if(!meta){box.textContent='시험코드를 선택하면 시험의 평가 성격과 예상 수준이 표시됩니다.';return}
-      box.innerHTML=`<strong>${escapeHtml(code)} · ${escapeHtml(meta.stage)}</strong><br><span class="growth-grade">국가 교육과정 기준 예상 수준 · ${escapeHtml(meta.gradeLevel||'')}</span><br>${escapeHtml(meta.summary)}`;
+    window.toggleGrowthTestField=function(){
+      const field=document.getElementById('growthTestField');if(field)field.classList.remove('hidden');
+      syncSelect();preview();
     };
-
-    window.growthReportHtml=polishedGrowthReportHtml;
+    window.renderGrowthTestPreview=preview;
+    window.growthReportHtml=reportHtml;
     window.renderGrowthReportBlock=function(){
-      const block=document.getElementById('growthTestReportBlock');
-      if(!block)return;
+      const block=document.getElementById('growthTestReportBlock');if(!block)return;
       const code=document.getElementById('growthTestCode')?.value||'';
-      block.innerHTML=polishedGrowthReportHtml(code);
+      block.innerHTML=reportHtml(code);
     };
 
-    document.querySelectorAll('input[name="schoolType"]').forEach(radio=>radio.addEventListener('change',()=>{
-      setTimeout(()=>{
-        const f=document.getElementById('growthTestField');
-        if(f)f.classList.remove('hidden');
-        syncGrowthTestSelect();
-        window.renderGrowthTestPreview();
-      },0);
-    }));
+    const select=document.getElementById('growthTestCode');
+    if(select&&!select.dataset.fixedGrowth){select.dataset.fixedGrowth='1';select.addEventListener('change',()=>{preview();window.renderGrowthReportBlock();});}
 
-    const originalSave=window.saveEvaluation;
-    if(typeof originalSave==='function'&&!window.__middleGrowthSaveFix){
-      window.__middleGrowthSaveFix=true;
-      window.saveEvaluation=async function(){
-        await originalSave.apply(this,arguments);
-        const savedOk=document.getElementById('saveStatus')?.textContent?.includes('저장되었습니다');
-        const code=document.getElementById('growthTestCode')?.value||'';
-        if(!savedOk||!code||!state?.db||!state?.selectedStudentId||!state?.user||!state?.appUnlocked)return;
-        try{await state.db.collection('students').doc(state.selectedStudentId).collection('evaluations').doc(evaluationKey()).set({growthTestCode:code},{merge:true})}catch(err){console.error('중등 Growth Test 코드 저장 실패:',err)}
-      };
-    }
-
-    window.renderGrowthTestPreview();
-  }
-
-  function installPolishedReport(){
-    addPolishStyles();
-    installMiddleGrowthFix();
-    const originalGenerate=window.generateReport;
-    if(typeof originalGenerate==='function'&&!window.__polishedGenerateInstalled){
-      window.__polishedGenerateInstalled=true;
+    if(typeof window.generateReport==='function'&&!window.__growthReportPatched){
+      window.__growthReportPatched=true;
+      const original=window.generateReport;
       window.generateReport=function(){
-        const result=originalGenerate.apply(this,arguments);
-        renderPolishedStudentInfo();
+        const result=original.apply(this,arguments);
+        renderStudent();
         window.renderGrowthReportBlock();
         return result;
       };
     }
+
+    preview();
   }
 
-  window.addEventListener('DOMContentLoaded',()=>setTimeout(installPolishedReport,0));
+  patch();
+  if(document.readyState==='loading')document.addEventListener('DOMContentLoaded',()=>setTimeout(patch,0));
+  else setTimeout(patch,0);
 })();
